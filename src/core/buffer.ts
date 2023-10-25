@@ -4,10 +4,11 @@ export const WIDTH = 256;
 export const HEIGHT = 256
 
 
-export const depthBuffer = new Float32Array(WIDTH * WIDTH)
+export const DepthBuffer = new Float32Array(WIDTH * WIDTH)
 
 
-export const colorBuffer = new Uint8ClampedArray(WIDTH * WIDTH * 4)
+
+export const ColorBuffer = new ImageData(WIDTH , HEIGHT)
 
 
 function clear (buffer: any) {
@@ -25,10 +26,10 @@ function clear (buffer: any) {
 export function clearBuffer(type: 1 | 0){
     switch(type){
         case 1:
-            clear(depthBuffer)
+            clear(DepthBuffer)
             break;
         case 0:
-            clear(colorBuffer)
+            clear(ColorBuffer)
             break;
     }
 }
