@@ -1,10 +1,13 @@
 
 
+export const WIDTH = 256;
+export const HEIGHT = 256
 
-export const depthBuffer = new Float32Array(256 * 256)
+
+export const depthBuffer = new Float32Array(WIDTH * WIDTH)
 
 
-export const colorBuffer = new Uint8ClampedArray(256 * 256 * 4)
+export const colorBuffer = new Uint8ClampedArray(WIDTH * WIDTH * 4)
 
 
 function clear (buffer: any) {

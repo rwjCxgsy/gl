@@ -1,14 +1,16 @@
 import * as THREE from 'three'
 
 
-type Triangle = [THREE.Vector2,THREE.Vector2,THREE.Vector2]
-type TriangleColor = [THREE.Color,THREE.Color,THREE.Color]
+export type Triangle = THREE.Vector2[]
+export type Triangle3 = THREE.Vector3[]
+export type TriangleColor = THREE.Color[]
 
 
 
-export function format(triangle: Triangle, colors: TriangleColor, buffer: Uint8ClampedArray) {
+export function format(triangle: Triangle3, triangleColor: TriangleColor, callback: (info: Float32Array) => void) {
+    const triangle2 = triangle.map(v => new THREE.Vector2(v.x, v.y))
     const box = triangle.slice(1).reduce((a, b) => {
-        return a.union(new THREE.Box2(b));
+        return a.union(new THREE.Box2(new THREE.Vector2(b.x, b.y)));
     }, new THREE.Box2())
 
     const {min, max} = box
@@ -16,14 +18,13 @@ export function format(triangle: Triangle, colors: TriangleColor, buffer: Uint8C
     const {x: maxX, y: maxY} = max
     for (let j = minY; j < maxY; j++) {
         for (let i = minX; i < maxX; i++) {
-            const bool = computePointInTriangle(triangle, new THREE.Vector2())
+            const point = new THREE.Vector2(i, j)
+            const bool = computePointInTriangle(triangle2, point)
             if (bool) {
-                const color = computeColor(triangle, new THREE.Vector2(i, j), colors)
-                const [r, g, b] = color.toArray()
-                buffer[j * 256 + i * 4] = Math.round(r * 255)
-                buffer[j * 256 + i * 4 + 1] = Math.round(g * 255)
-                buffer[j * 256 + i * 4 + 2] = Math.round(b * 255)
-                buffer[j * 256 + i * 4 + 3] = 255
+                // 颜色插值
+                computeColor(triangle2, point, triangleColor)
+                // 深度插值
+                // callback?.(new THREE.Vector3(point.x, point.y, 0))
             }
         }
     }
