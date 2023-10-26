@@ -4,7 +4,7 @@ export const WIDTH = 256;
 export const HEIGHT = 256
 
 
-export const DepthBuffer = new Float32Array(WIDTH * WIDTH)
+export const DepthBuffer = new Float32Array(new Array(WIDTH * WIDTH).fill(1))
 
 
 

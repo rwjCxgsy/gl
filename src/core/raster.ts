@@ -7,19 +7,28 @@ export type TriangleColor = THREE.Color[]
 
 
 
+export function pointRect(triangle: Triangle): number[] {
+    const xs = triangle.map(v => v.x);
+    const ys = triangle.map(v => v.y);
+    const minX = Math.min(...xs)
+    const minY = Math.min(...ys)
+    const maxX = Math.max(...xs)
+    const maxY = Math.max(...ys)
+    return [minX, minY, maxX, maxY]
+}
+
+
 export function format(triangle: Triangle3, triangleColor: TriangleColor, callback: (info: Float32Array) => void) {
     const triangle2 = triangle.map(v => new THREE.Vector2(v.x, v.y))
-    const box = triangle.slice(1).reduce((a, b) => {
-        return a.union(new THREE.Box2(new THREE.Vector2(b.x, b.y)));
-    }, new THREE.Box2())
 
-    const {min, max} = box
-    const {x: minX, y: minY} = min
-    const {x: maxX, y: maxY} = max
+
+    const [minX, minY, maxX, maxY] = pointRect(triangle2)
+
     for (let j = minY; j < maxY; j++) {
         for (let i = minX; i < maxX; i++) {
             const point = new THREE.Vector2(i, j)
             const bool = computePointInTriangle(triangle2, point)
+
             if (bool) {
                 // 颜色插值
                 const color = computeColor(triangle2, point, triangleColor)

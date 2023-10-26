@@ -26,18 +26,21 @@ export class Renderer {
                 index,
             } = v.geometry;
 
-            const mat4 = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
+            const mat4 = new THREE.Matrix4().multiplyMatrices(new THREE.Matrix4(), camera.matrixWorldInverse)
             const points = toPoints(position.array);
             const colors = toColor(color.array);
             for (let i = 0, k = 0; i < index!.array.length; i += 3, k++) {
+                const k1 = index!.array[i]
+                const k2 = index!.array[i + 1]
+                const k3 = index!.array[i + 2]
                 // 每三个顶点构建一个三角形
-                const a = points[i];
-                const b = points[i + 1];
-                const c = points[i + 2];
+                const a = points[k1];
+                const b = points[k2];
+                const c = points[k3];
 
-                const d = colors[i];
-                const e = colors[i + 1];
-                const f = colors[i + 2];
+                const d = colors[k1];
+                const e = colors[k2];
+                const f = colors[k3];
                 // TODO: vertex Shader
 
                 this.vertexShader([a, b, c], [d, e, f], mat4);
@@ -62,11 +65,17 @@ export class Renderer {
         mat: THREE.Matrix4
     ): THREE.Vector2[] {
         // 投影计算
-        const transform = triangle.map((v) => v.applyMatrix4(mat));
+        const transform = triangle.map((v) => {
+            const v4 = new THREE.Vector4(v.x, v.y, v.z, 1).applyMatrix4(mat)
+            v4.multiplyScalar(1/v4.w)
+            return new THREE.Vector3(v4.x, v4.y, (v4.z + 1) / 2)
+        });
+
+
 
         format(transform, triangleColor, (data) => {
             const [depth, x, y, r, g, b] = data;
-            if (DepthBuffer[y * WIDTH + x] > depth) {
+            if (DepthBuffer[y * WIDTH + x] < depth) {
                 // 更新 深度
                 DepthBuffer[y * WIDTH + x] = depth;
                 this.fragmentShader([x, y, r, g, b]);
@@ -87,6 +96,7 @@ export class Renderer {
      */
     fragmentShader(data: number[]) {
         const [x, y, r, g, b] = data;
+        debugger
         ColorBuffer.data[y * WIDTH * 4 + x * 4] = r;
         ColorBuffer.data[y * WIDTH * 4 + x * 4 + 1] = g;
         ColorBuffer.data[y * WIDTH * 4 + x * 4 + 2] = b;
