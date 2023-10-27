@@ -1,37 +1,35 @@
 import * as THREE from 'three'
-
-
-export type Triangle = THREE.Vector2[]
-export type Triangle3 = THREE.Vector3[]
-export type TriangleColor = THREE.Color[]
+import { MathUtils } from './_utils';
 
 
 
-export function pointRect(triangle: Triangle): number[] {
-    const xs = triangle.map(v => v.x);
-    const ys = triangle.map(v => v.y);
+
+
+export function pointRect(triangle: THREE.Triangle): number[] {
+    const triangle2 = [triangle.a, triangle.b, triangle.c].map(v => new THREE.Vector2(v.x, v.y))
+    const xs = triangle2.map(v => v.x);
+    const ys = triangle2.map(v => v.y);
     const minX = Math.min(...xs)
     const minY = Math.min(...ys)
     const maxX = Math.max(...xs)
     const maxY = Math.max(...ys)
-    return [minX, minY, maxX, maxY]
+    return [minX, minY, maxX, maxY].map(v => Math.floor(v))
 }
 
 
-export function format(triangle: Triangle3, triangleColor: TriangleColor, callback: (info: Float32Array) => void) {
-    const triangle2 = triangle.map(v => new THREE.Vector2(v.x, v.y))
+export function format(triangle: THREE.Triangle, triangleColor: THREE.Triangle, callback: (info: Float32Array) => void) {
 
 
-    const [minX, minY, maxX, maxY] = pointRect(triangle2)
+    const [minX, minY, maxX, maxY] = pointRect(triangle)
 
     for (let j = minY; j < maxY; j++) {
         for (let i = minX; i < maxX; i++) {
-            const point = new THREE.Vector2(i, j)
-            const bool = computePointInTriangle(triangle2, point)
+        const point = new THREE.Vector2(i, j)
+            const bool = triangle.containsPoint(new THREE.Vector3(point.x, point.y, 0))
 
             if (bool) {
                 // 颜色插值
-                const color = computeColor(triangle2, point, triangleColor)
+                const color = computeColor(triangle, point, triangleColor)
                 // 深度插值
                 const depth = computeDepth(triangle, point)
 
@@ -45,31 +43,46 @@ export function format(triangle: Triangle3, triangleColor: TriangleColor, callba
 
 /**
  * @description 检查点是否在三角形内
- * @param {Triangle} triangle
+ * @param {THREE.Triangle} triangle
  * @param {THREE.Vector2} point
  * @return {*} 
  */
-function computePointInTriangle(triangle: Triangle, point: THREE.Vector2): boolean {
-    const bool = triangle.map(v => point.cross(v) >= 0 ? 1: -1)
+function computePointInTriangle(triangle: THREE.Triangle, point: THREE.Vector2): boolean {
+    const vec2 = triangle.map(v => new THREE.Vector2().subVectors(point, v))
+    const edge = [...triangle, triangle.a]
+    const bool: boolean[] = []
+
+    for (let i = 0; i < edge.length - 1; i++) {
+        const to = new THREE.Vector2().subVectors(edge[i + 1], edge[i])
+        bool.push(vec2[i].cross(to) >= 0)
+    }
     return new Set(bool).size === 1
 }
 
 /**
  * @description 计算颜色
- * @param {Triangle} triangle
+ * @param {THREE.Triangle} triangle
  * @param {THREE.Vector2} point
- * @param {TriangleColor} triangleColor
+ * @param {THREE.Triangle} triangleColor
  * @return {*}  {THREE.Color}
  */
-function computeColor(triangle: Triangle, point: THREE.Vector2, triangleColor: TriangleColor): THREE.Color {
-    const distances = triangle.map((v) => 1 / v.distanceTo(point))
-    const color = distances.map((v, index) => triangleColor[index].multiplyScalar(v)).reduce((a, b) => a.add(b)).multiplyScalar(distances.reduce((a, b) => a + b))
-    return color
+function computeColor(triangle: THREE.Triangle, point: THREE.Vector2, triangleColor: THREE.Triangle): THREE.Color {
+    // const distances = triangle.map((v) => 1 / v.distanceTo(point))
+    // const color = distances.map((v, index) => triangleColor[index].multiplyScalar(v)).reduce((a, b) => a.clone().add(b)).multiplyScalar(distances.reduce((a, b) => a + b))
+
+    const uvw = new THREE.Vector3()
+    triangle.getBarycoord(new THREE.Vector3(point.x, point.y, 0), uvw);
+    const {x: u, y: v, z:w} = uvw;
+    const red = triangleColor.a.x * u + triangleColor.b.x * v + triangleColor.c.x * w
+    const green = triangleColor.a.y * u + triangleColor.b.y * v + triangleColor.c.y * w
+    const blue = triangleColor.a.z * u + triangleColor.b.z * v + triangleColor.c.z * w
+    return new THREE.Color(red, green, blue)
 }
 
-function computeDepth(triangle: THREE.Vector3[], point: THREE.Vector2): number {
-    const triangle2 = triangle.map(v => new THREE.Vector2(v.x, v.y))
-    const result = getIntersectionPoint([...triangle2[0], ...triangle2[1]], [...triangle2[2], ...point.toArray()])
+function computeDepth(triangle: THREE.Triangle, point: THREE.Vector2): number {
+    const triangle2 = [triangle.a, triangle.b, triangle.c].map(v => new THREE.Vector2(v.x, v.y))
+    
+    const result = MathUtils.getSegmentCrossPoint([triangle2[0], triangle2[1]], [triangle2[2], point])
     if (!result) {
         throw new Error('No intersection point' + point.toArray())
     }
@@ -79,12 +92,12 @@ function computeDepth(triangle: THREE.Vector3[], point: THREE.Vector2): number {
     {
         const s = new THREE.Vector2().subVectors(crossPoint, triangle2[0]).length()
         const length = new THREE.Vector2().subVectors(triangle2[1], triangle2[0]).length()
-        depth = triangle[0].z + (triangle[1].z - triangle[0].z) * (s / length)
+        depth = triangle.a.z + (triangle.b.z - triangle.a.z) * (s / length)
     }
     {
         const s = new THREE.Vector2().subVectors(point, crossPoint).length()
         const length = new THREE.Vector2().subVectors(triangle2[2], crossPoint).length()
-        depth = depth + (triangle[2].z - depth) * (s / length)
+        depth = depth + (triangle.c.z - depth) * (s / length)
     }
 
     return depth;
@@ -92,23 +105,29 @@ function computeDepth(triangle: THREE.Vector3[], point: THREE.Vector2): number {
 }
 
 
-function getIntersectionPoint(line1: number[], line2: number[]) {
-    // 提取线段的坐标
-    const [x1, y1, x2, y2] = line1;
-    const [x3, y3, x4, y4] = line2;
+function getIntersectionPoint(seg1Start: THREE.Vector2, seg1End: THREE.Vector2, seg2Start: THREE.Vector2, seg2End: THREE.Vector2) {
+    const dir1 = new THREE.Vector2().subVectors(seg1End, seg1Start);
+    const dir2 = new THREE.Vector2().subVectors(seg2End, seg2Start);
   
-    // 计算向量
-    const uA = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
-    const uB = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
-  
-    // 判断是否相交
-    if (uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1) {
-      // 计算交点的坐标
-      const intersectionX = x1 + uA * (x2 - x1);
-      const intersectionY = y1 + uA * (y2 - y1);
-      return [intersectionX, intersectionY];
+    const denominator = dir1.x * dir2.y - dir1.y * dir2.x;
+    
+    if (denominator === 0) {
+      // 平行或共线的情况
+      return null;
     }
   
-    // 若无交点，则返回 null
-    return null;
+    const diffStarts = new THREE.Vector2().subVectors(seg2Start, seg1Start);
+    const t = (diffStarts.x * dir2.y - diffStarts.y * dir2.x) / denominator;
+    const u = (diffStarts.x * dir1.y - diffStarts.y * dir1.x) / denominator;
+  
+    if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+      // 计算交点坐标
+      const intersection = new THREE.Vector2();
+      intersection.x = seg1Start.x + t * dir1.x;
+      intersection.y = seg1Start.y + t * dir1.y;
+      return intersection;
+    } else {
+      // 两条线段不相交
+      return null;
+    }
   }

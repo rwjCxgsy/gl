@@ -11,6 +11,7 @@
 
 import * as THREE from 'three'
 import {Renderer} from './core/renderer'
+import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls'
 
 
 
@@ -21,28 +22,28 @@ canvas.height = window.innerHeight
 
 const renderer = new Renderer(canvas)
 
-const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1))
+const box = new THREE.Mesh(new THREE.BoxGeometry(20, 20, 20))
 
 
 const len = box.geometry.attributes['position'].count
 
 const colors = []
 for (let i = 0; i < len; i++) {
-  colors.push(new THREE.Color().setHex(Math.random() * 0xffffff)  )
+  colors.push(new THREE.Color().setHex(Math.random() * 0xffffff | 0)  )
 }
 box.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors.map(v => v.toArray()).flat(1), 3))
-box.geometry
 
 renderer.add(box)
 
 const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100)
-camera.position.set(0.6000001, 0.6000001, 0.6000001)
+camera.position.set(20, 20, 20.6000001)
 camera.lookAt(new THREE.Vector3(0, 0, 0))
 camera.updateMatrixWorld()
 
-
+const controls = new OrbitControls(camera, canvas)
 const loop = () => {
   requestAnimationFrame(loop)
+  controls.update()
   renderer.render(camera)
 }
 requestAnimationFrame(loop)

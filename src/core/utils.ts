@@ -9,7 +9,7 @@ import {format, Triangle, Triangle3, TriangleColor} from './raster'
  * @param {Float32Array} buffer
  * @return {*}  {THREE.Vector3[]}
  */
-export function toPoints (buffer: THREE.TypedArray): THREE.Vector3[] {
+export function toVec (buffer: THREE.TypedArray): THREE.Vector3[] {
     const points: THREE.Vector3[] = []
     for (let i = 0; i < buffer.length; i+=3) {
         const a = buffer[i]
