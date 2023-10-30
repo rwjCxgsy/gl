@@ -92,7 +92,7 @@ export class MathUtils {
             }
         }
 
-        const x = (line1.b - line2.b) / (line2.k - line1.x)
+        const x = (line1.b - line2.b) / (line2.k - line1.k)
         const y = line1.k * x + line1.b
         return {
             data: new THREE.Vector2(x, y), statue: CrossState.cross
@@ -102,6 +102,7 @@ export class MathUtils {
     static getSegmentCrossPoint (a: THREE.Vector2[], b: THREE.Vector2[]) {
         const line1 = MathUtils.toLine2(...a)
         const line2 = MathUtils.toLine2(...b)
+
         return MathUtils.getCrossPoint(line1, line2)
     }
 }

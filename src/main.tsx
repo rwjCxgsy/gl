@@ -35,12 +35,14 @@ box.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors.map(v
 
 renderer.add(box)
 
-const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100)
+const camera = new THREE.PerspectiveCamera(75, 1, 1, 100)
 camera.position.set(20, 20, 20.6000001)
 camera.lookAt(new THREE.Vector3(0, 0, 0))
 camera.updateMatrixWorld()
 
 const controls = new OrbitControls(camera, canvas)
+
+const clock = new THREE.Clock()
 const loop = () => {
   requestAnimationFrame(loop)
   controls.update()
