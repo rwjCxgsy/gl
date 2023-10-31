@@ -10,7 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/gl-matrix": "^3.2.0",
     "@types/three": "^0.157.2",
+    "gl-matrix": "^3.4.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "three": "^0.157.0"

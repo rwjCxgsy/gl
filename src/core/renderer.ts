@@ -1,26 +1,43 @@
-import { DepthBuffer, ColorBuffer, WIDTH, HEIGHT, clearBuffer } from "./buffer";
+
 import * as THREE from "three";
-import { toColor, toVec } from "./utils";
-import { format } from "./raster";
+import { toColor, toVec, toVec4 } from "./utils";
+import { vertexShader } from "./shader";
+import {vec4, vec3, vec2, mat4} from 'gl-matrix'
+import { Triangle } from "./const";
 
 
-const v4 = new THREE.Vector4()
 
-const half = new THREE.Vector3(WIDTH / 2, HEIGHT / 2, 1)
-
-const modify = new THREE.Triangle()
 export class Renderer {
-    public depthBuffer = DepthBuffer;
-    public colorBuffer = ColorBuffer;
 
+
+
+
+    frame: ImageData
     list: Array<THREE.Mesh> = [];
     ctx: CanvasRenderingContext2D;
-    constructor(public canvas: HTMLCanvasElement) {
+    depthBuffer: Float32Array;
+    colorBuffer: Uint8ClampedArray;
+    v4: vec4;
+    half: vec3;
+    triangle: Triangle;
+    v3: vec3;
+
+
+    constructor(public canvas: HTMLCanvasElement, public WIDTH = 256, public HEIGHT = 256) {
         this.ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
         this.ctx.canvas.width = WIDTH;
         this.ctx.canvas.height = HEIGHT;
         this.ctx.canvas.style.width = WIDTH + "px";
         this.ctx.canvas.style.height = HEIGHT + "px";
+
+        this.depthBuffer = new Float32Array(new Array(WIDTH * WIDTH).fill(1));
+        this.frame = new ImageData(WIDTH, WIDTH);
+        this.colorBuffer = this.frame.data
+
+        this.v4 = vec4.create()
+        this.v3 = vec3.create()
+        this.half = vec3.fromValues(WIDTH / 2, HEIGHT / 2, 1)
+        
     }
 
     add(obj: THREE.Mesh) {
@@ -28,19 +45,24 @@ export class Renderer {
     }
 
 
-    cache = new Map()
+    cache: Map<THREE.Mesh, any> = new Map()
 
     render(camera: THREE.PerspectiveCamera) {
+
+        const { half} = this
+
         this.list.forEach((v) => {
             const {
                 attributes: { position, color },
                 index,
             } = v.geometry;
 
-            const mat4 = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+            const _mat4 = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+            const proMat4 = mat4.fromValues(..._mat4.toArray())
+
             let [points, colors] = this.cache.get(v) || []
             if (!points) {
-               points = toVec(position.array);
+               points = toVec4(position.array);
                colors = toVec(color.array);
                this.cache.set(v, [points, colors])
             }
@@ -48,6 +70,8 @@ export class Renderer {
                 const k1 = index!.array[i];
                 const k2 = index!.array[i + 1];
                 const k3 = index!.array[i + 2];
+
+
                 // 每三个顶点构建一个三角形
                 const a = points[k1];
                 const b = points[k2];
@@ -57,32 +81,45 @@ export class Renderer {
                 const e = colors[k2];
                 const f = colors[k3];
                 // TODO: vertex Shader
-
-                // 投影计算
-                const transform = [a, b, c].map((v) => {
-                    v4.set(v.x, v.y, v.z, 1).applyMatrix4(mat4);
-                    v4.multiplyScalar(1 / v4.w);
-                    return new THREE.Vector3(v4.x, v4.y, (v4.z + 1) / 2).multiply(half);
-                });
+                const triangle = {a: vec3.create(), b: vec3.create(), c: vec3.create()}
 
 
-                modify.a = transform[0]
-                modify.b = transform[1]
-                modify.c = transform[2]
+                {
+                    vec4.transformMat4(a, a, proMat4)
+                    vec4.scale(a, a, 1 / a[3])
+                    vec3.multiply(triangle.a, vec3.fromValues(a[0], a[1], (a[2] + 1) / 2), half)
+                }
                 
+                {
+                    vec4.transformMat4(b, b, proMat4)
+                    vec4.scale(b, b, 1 / b[3])
+                    vec3.multiply(triangle.b, vec3.fromValues(b[0], b[1], (b[2] + 1) / 2), half)
+                }
 
-
-                //  背面剔除
-                const a2b = new THREE.Vector2().subVectors(new THREE.Vector2(modify.b.x, modify.b.y), new THREE.Vector2(modify.a.x, modify.a.y))
-                const a2c = new THREE.Vector2().subVectors(new THREE.Vector2(modify.c.x, modify.c.y), new THREE.Vector2(modify.a.x, modify.a.y))
-                if (a2c.cross(a2b) < 0) {
-                    this.vertexShader(modify, new THREE.Triangle(d, e, f));
+                {
+                    vec4.transformMat4(c, c, proMat4)
+                    vec4.scale(c, c, 1 / c[3])
+                    vec3.multiply(triangle.c, vec3.fromValues(c[0], c[1], (c[2] + 1) / 2), half)
                 }
 
 
+                const v3 = vec3.create()
+                vec2.cross(v3, 
+                    vec2.fromValues(
+                        triangle.b[0] - triangle.a[0],
+                        triangle.b[1] - triangle.a[1],
+                    ),
+                    vec2.fromValues(
+                        triangle.c[0] - triangle.a[0],
+                        triangle.c[1] - triangle.a[1],
+                    )
+                )
 
 
-
+                if (v3[2] < 0) {
+                    const color_triangle = {a: d, b: e, c: f}
+                    vertexShader(triangle, color_triangle);
+                }
                 // TODO fragment Shader
 
                 // projection()
@@ -93,43 +130,7 @@ export class Renderer {
         this.draw();
     }
 
-    /**
-     * 计算顶点，深度测试，返回通过测试的片元
-     *
-     */
-    vertexShader(triangle: THREE.Triangle, triangleColor: THREE.Triangle): THREE.Vector2[] {
 
-        let x, y;
-        format(triangle, triangleColor, (data) => {
-            const [depth, _x, _y, r, g, b] = data;
-            x = Math.floor(_x + WIDTH / 2) ;
-            y = Math.floor(HEIGHT - (_y + HEIGHT / 2));
-            if (DepthBuffer[y * WIDTH + x] > depth) {
-                // 更新 深度
-                DepthBuffer[y * WIDTH + x] = depth;
-                this.fragmentShader([x, y, r, g, b]);
-            }
-        });
-
-        // 计算包围盒
-
-        // 遍历顶点
-        // 判断是否再三角形内并插值
-        //  深度测试
-        return [new THREE.Vector2()];
-    }
-
-    /**
-     * @description 片元着色
-     * @param {number[]} arg0
-     */
-    fragmentShader(data: number[]) {
-        const [x, y, r, g, b] = data;
-        ColorBuffer.data[y * WIDTH * 4 + x * 4] = (r * 255) | 0;
-        ColorBuffer.data[y * WIDTH * 4 + x * 4 + 1] = (g * 255) | 0;
-        ColorBuffer.data[y * WIDTH * 4 + x * 4 + 2] = (b * 255) | 0;
-        ColorBuffer.data[y * WIDTH * 4 + x * 4 + 3] = 255;
-    }
 
     draw() {
         this.ctx.clearRect(0, 0, WIDTH, HEIGHT);
