@@ -12,8 +12,10 @@
 import * as THREE from 'three'
 import {Renderer} from './core/renderer'
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls'
+import {getWebGLInfoByVersion} from './info';
 
 
+console.log(getWebGLInfoByVersion(2))
 
 const canvas = document.getElementById('root') as HTMLCanvasElement
 
@@ -49,6 +51,7 @@ const loop = () => {
   renderer.render(camera)
 }
 requestAnimationFrame(loop)
+
 
 
 

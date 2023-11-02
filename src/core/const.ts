@@ -9,6 +9,8 @@ export interface Triangle {
     f?: vec3
 }
 
+export type TypedArray = THREE.TypedArray
+
 export interface TriangleV2 {
     a: vec2,
     b: vec2,

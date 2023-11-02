@@ -7,16 +7,16 @@ import { Triangle } from "./const";
  * 计算顶点，深度测试，返回通过测试的片元
  *
  */
-export function vertexShader(triangle: Triangle, triangleColor: Triangle): THREE.Vector2[] {
+export function vertexShader(triangle: Triangle, triangleColor: Triangle, depthBuffer: THREE.TypedArray, colorBuffer: THREE.TypedArray): THREE.Vector2[] {
     let x, y;
 
     format(triangle, triangleColor, (data) => {
         const [depth, _x, _y, r, g, b] = data;
         x = Math.floor(_x + WIDTH / 2);
         y = Math.floor(HEIGHT - (_y + HEIGHT / 2));
-        if (DepthBuffer[y * WIDTH + x] > depth) {
+        if (depthBuffer[y * WIDTH + x] > depth) {
             // 更新 深度
-            DepthBuffer[y * WIDTH + x] = depth;
+            depthBuffer[y * WIDTH + x] = depth;
             fragmentShader([x, y, r, g, b]);
         }
     });
