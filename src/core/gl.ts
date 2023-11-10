@@ -15,12 +15,21 @@ export class Gl {
     half: vec3;
 
     // triangle: Triangle;
-    constructor(public ctx: CanvasRenderingContext2D, public WIDTH = 256, public HEIGHT = 256) {
-        this.depthBuffer = new Float32Array(WIDTH * WIDTH);
-        this.frame = new ImageData(WIDTH, WIDTH);
-        this.colorBuffer = this.frame.data;
+    constructor(public ctx: CanvasRenderingContext2D, public WIDTH = 512, public HEIGHT = 512) {
+        this.initDepthBuffer()
+        this.initFrame()
 
         this.half = vec3.fromValues(WIDTH / 2, HEIGHT / 2, 0);
+    }
+
+    initDepthBuffer () {
+        const {WIDTH} = this
+        this.depthBuffer = new Float32Array(WIDTH * WIDTH);
+    }
+    initFrame () {
+        const {WIDTH} = this
+        this.frame = new ImageData(WIDTH, WIDTH);
+        this.colorBuffer = this.frame.data;
     }
 
     shader() {
@@ -70,6 +79,8 @@ export class Gl {
 
         const triangle = { a: vec3.create(), b: vec3.create(), c: vec3.create() };
         for (let i = 0, k = 0; i < index.length; i += 3, k++) {
+
+            
             const k1 = index[i];
             const k2 = index[i + 1];
             const k3 = index[i + 2];
@@ -82,9 +93,9 @@ export class Gl {
             const d = color[k1];
             const e = color[k2];
             const f = color[k3];
-            // // TODO: vertex Shader
 
             const out_a = vec4.create()
+
             const out_b = vec4.create()
             const out_c = vec4.create()
 
@@ -128,14 +139,10 @@ export class Gl {
     }
 
     clearColorBuffer() {
-        for (let i = 0; i < this.colorBuffer.length; i++) {
-            this.colorBuffer[i] = 0;
-        }
-        this.ctx.clearRect(0, 0, this.WIDTH, this.HEIGHT);
+        this.initFrame()
+        // this.ctx.clearRect(0, 0, this.WIDTH, this.HEIGHT);
     }
     clearDepthBuffer() {
-        for (let i = 0; i < this.depthBuffer.length; i++) {
-            this.depthBuffer[i] = 0;
-        }
+        this.initDepthBuffer()
     }
 }

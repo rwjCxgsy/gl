@@ -20,7 +20,7 @@ export class Renderer {
     gl: Gl;
 
 
-    constructor(public canvas: HTMLCanvasElement, public WIDTH = 256, public HEIGHT = 256) {
+    constructor(public canvas: HTMLCanvasElement, public WIDTH = 512, public HEIGHT = 512) {
         this.ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
         this.ctx.canvas.width = window.innerWidth;
         this.ctx.canvas.height = window.innerHeight;

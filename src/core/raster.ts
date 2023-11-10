@@ -21,9 +21,10 @@ const color = vec3.create()
 let dot00, dot01, dot02, dot11, dot12;
 let denom, invDenom, u, v, w;
 
-const result = new Float32Array(5)
+const result = new Float32Array(6)
 
-// const ys = new Int32Array([0, 0, 0]);
+
+
 export function pointRect(triangle: Triangle): number[] {
 
 
@@ -54,19 +55,23 @@ export function format(triangle: Triangle, triangleColor: Triangle, callback: (i
 
 
 
+
+    
+
     for (let j = minY; j < maxY; j++) {
         for (let i = minX; i < maxX; i++) {
             point[0] = i
             point[1] = j
             point[2] = 0
 
-            const [depth, r, g, b] = computePointInTriangle(triangle, triangleColor, point);
-            if (depth !== -1) {
+            
+            const data = computePointInTriangle(triangle, triangleColor, point);
+            if (data[0] !== -1) {
                 // 颜色插值
                 // const color = computeColor(triangle, point, triangleColor);
                 // // 深度插值
                 // const depth = computeDepth(triangle, vec2.fromValues(point.x, point.y));
-                callback(new Float32Array([depth, i, j, r, g, b]));
+                callback(data);
                 // callback?.(new Vector3(point.x, point.y, 0))
             }
         }
@@ -125,10 +130,12 @@ function computePointInTriangle(triangle: Triangle, colors: Triangle, point: vec
     
     // barycentric coordinates must always sum to 1
     // return vec3.fromValues( 1 - u - v, v, u );
-    result[1] = color[0];
-    result[2] = color[1];
-    result[3] = color[2];
-    result[0] = Math.random();
+    result[1] = point[0]
+    result[2] = point[1]
+    result[3] = color[0];
+    result[4] = color[1];
+    result[5] = color[2];
+    result[0] = 1;
     return result
 }
 
@@ -161,3 +168,6 @@ function computeDepth(triangle: Triangle, point: vec3): number {
 }
 
 
+
+// 判断点是否在三角形内部
+function computePointInPolylon() {}
